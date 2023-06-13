@@ -50,6 +50,8 @@ module Pod
       alias_method :orig_download_file, :download_file
       alias_method :orig_should_flatten?, :should_flatten?
 
+      puts("Looking for .netrc in #{Pod::Config.instance.project_root}")
+
       def download_file(full_filename)
         parameters = ["-f", "-L", "-o", full_filename, url, "--create-dirs", "--netrc-optional", '--retry', '2']
         parameters << user_agent_argument if headers.nil? ||
@@ -58,8 +60,11 @@ module Pod
         ssl_conf = ["--cert", `git config --global http.sslcert`.gsub("\n", ""), "--key", `git config --global http.sslkey`.gsub("\n", "")]
         parameters.concat(ssl_conf) if !ssl_conf.any?(&:blank?)
 
-        netrc_path = ENV["COCOAPODS_ART_NETRC_PATH"]
-        parameters.concat(["--netrc-file", Pathname.new(netrc_path).expand_path]) if netrc_path
+        local_netrc_path = "#{Pod::Config.instance.project_root}/.netrc"
+        if File.exist?(local_netrc_path)
+          puts("Using #{local_netrc_path}")
+          parameters.concat(["--netrc-file", Pathname.new(local_netrc_path).expand_path])
+        end
 
         art_credentials = ENV["COCOAPODS_ART_CREDENTIALS"]
         parameters.concat(["--user", art_credentials]) if art_credentials
